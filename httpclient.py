@@ -68,12 +68,12 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
+        code = 404
         body = ""
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
+        code = 404
         body = ""
         return HTTPResponse(code, body)
 
