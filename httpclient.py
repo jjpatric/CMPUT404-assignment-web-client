@@ -19,11 +19,14 @@
 # Write your own HTTP GET and POST
 # The point is to understand what you have to send and get experience with it
 
+from ast import parse
 import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
-import urllib.parse
+from urllib.parse import urlparse
+
+USER_AGENT = "jjpat/0.1"
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -70,7 +73,16 @@ class HTTPClient(object):
 
     def GET(self, url, args=None):
         # Send get request to server
-
+        parsed_url = urlparse(url)
+        http_get = "\
+            GET {} HTTP/1.1\r\n\
+            Host: {}\r\n\
+            User-Agent: {}\r\n\
+            Accept: */*\r\n\r\n\
+            ".format(parsed_url.path, parsed_url.hostname, USER_AGENT)
+        print(http_get)
+        
+        self.connect(parsed_url.hostname, parsed_url.port)
         # handle reply
         code = 404
         body = ""
