@@ -19,14 +19,13 @@
 # Write your own HTTP GET and POST
 # The point is to understand what you have to send and get experience with it
 
-from ast import parse
 import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
 from urllib.parse import urlparse
 
-USER_AGENT = "jjpat/0.1"
+USER_AGENT = "curl/7.68.0"
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -41,17 +40,25 @@ class HTTPClient(object):
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((host, port))
+        remote_ip = socket.gethostbyname(host)
+        self.socket.connect((remote_ip, port))
         return None
 
     def get_code(self, data):
-        return None
+        ss = data.split()
+        if len(ss) > 3:
+            return ss[1]
+        return 501
 
     def get_headers(self,data):
-        return None
+        return ""
 
     def get_body(self, data):
-        return None
+        ss = data.split('\r\n\r\n')
+        if len(ss) < 2:
+            return ""
+        else:
+            return ss[1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -63,7 +70,7 @@ class HTTPClient(object):
     def recvall(self, sock):
         buffer = bytearray()
         done = False
-        while not done:
+        for _ in range(1):
             part = sock.recv(1024)
             if (part):
                 buffer.extend(part)
@@ -74,18 +81,27 @@ class HTTPClient(object):
     def GET(self, url, args=None):
         # Send get request to server
         parsed_url = urlparse(url)
-        http_get = "\
-            GET {} HTTP/1.1\r\n\
-            Host: {}\r\n\
-            User-Agent: {}\r\n\
-            Accept: */*\r\n\r\n\
-            ".format(parsed_url.path, parsed_url.hostname, USER_AGENT)
+        # print("URL PARSED: ", parsed_url)
+        # print("PORT: ", parsed_url.port)
+        http_get = "GET {} HTTP/1.1\r\nHost: {}\r\nUser-Agent: {}\r\nAccept: */*\r\n\r\n".format(parsed_url.path, parsed_url.hostname, USER_AGENT)
         print(http_get)
-        
-        self.connect(parsed_url.hostname, parsed_url.port)
+
+        if not parsed_url.port:
+            self.connect(parsed_url.hostname, 80)
+        else:
+            self.connect(parsed_url.hostname, parsed_url.port)
+        self.sendall(http_get)
+
         # handle reply
-        code = 404
-        body = ""
+        recieved_data = self.recvall(self.socket)
+        # print("RECIEVED: \n", recieved)
+        code = self.get_code(recieved_data)
+        print("GOT CODE: ", code)
+        headers = self.get_headers(recieved_data)
+        body = self.get_body(recieved_data)
+        print("GOT BODY: ", body)
+        self.socket.shutdown(socket.SHUT_WR)
+        self.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
