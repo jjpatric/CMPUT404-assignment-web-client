@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
+# Additional modifications by https://github.com/jjpatric
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,6 +69,9 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
+        # Send get request to server
+
+        # handle reply
         code = 404
         body = ""
         return HTTPResponse(code, body)
