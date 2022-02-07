@@ -25,8 +25,6 @@ import re
 # you may use urllib to encode data appropriately
 from urllib.parse import urlparse
 
-USER_AGENT = "curl/7.68.0"
-
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
 
@@ -71,7 +69,7 @@ class HTTPClient(object):
         done = False
         while not done:
             part = sock.recv(1024)
-            print("Got part: ", part)
+            # print("Got part: ", part)
             if (part):
                 buffer.extend(part)
             else:
@@ -88,7 +86,7 @@ class HTTPClient(object):
             path = "/"
         else:
             path = parsed_url.path
-        http_get = "GET {} HTTP/1.1\r\nHost: {}\r\nUser-Agent: {}\r\nAccept: */*\r\nConnection: close\r\n\r\n".format(path, parsed_url.hostname, USER_AGENT)
+        http_get = "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n".format(path, parsed_url.hostname)
         #print(http_get)
 
         if not parsed_url.port:
@@ -113,7 +111,48 @@ class HTTPClient(object):
         return HTTPResponse(int(code), body)
 
     def POST(self, url, args=None):
-        return HTTPResponse(200, "")
+        # Send post request to server
+        parsed_url = urlparse(url)
+        # print("URL PARSED: ", parsed_url)
+        # print("PORT: ", parsed_url.port)
+        # Add path to root if no path given
+        if parsed_url.path == "":
+            path = "/"
+        else:
+            path = parsed_url.path
+        content = ""
+        if args:
+            for key, val in args.items():
+                content += key + "=" + val + "&"
+            content = content[:-1] # remove last &
+        # print("CONTENT: ", content)
+        if content == "":
+            http_post = "POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".format(path, parsed_url.hostname)
+        else:
+            http_post = "POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\n\r\n{}\r\n\r\n".format(path, parsed_url.hostname, len(content), content)
+
+        # print("MY POST: ", http_post)
+
+        if not parsed_url.port:
+            # default to port 80
+            self.connect(parsed_url.hostname, 80)
+        else:
+            self.connect(parsed_url.hostname, parsed_url.port)
+        self.sendall(http_post)
+
+        # handle reply
+        recieved_data = self.recvall(self.socket)
+        # print("RECIEVED: \n", recieved)
+        code = self.get_code(recieved_data)
+        # print("GOT CODE: ", code)
+        headers = self.get_headers(recieved_data)
+        body = self.get_body(recieved_data)
+        # print("GOT BODY: ", body)
+
+        # socket shutdown
+        self.socket.shutdown(socket.SHUT_WR)
+        self.close()
+        return HTTPResponse(int(code), body)
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
