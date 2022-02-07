@@ -48,9 +48,6 @@ class HTTPClient(object):
         else:
             return 501
 
-    def get_headers(self,data):
-        return ""
-
     def get_body(self, data):
         ss = data.split('\r\n\r\n')
         if len(ss) > 1:
@@ -63,13 +60,12 @@ class HTTPClient(object):
     def close(self):
         self.socket.close()
 
-    # read everything from the socket
-    def recvall(self, sock):
+    def recvall(self, sock):    
+        # read everything from the socket
         buffer = bytearray()
         done = False
         while not done:
             part = sock.recv(1024)
-            # print("Got part: ", part)
             if (part):
                 buffer.extend(part)
             else:
@@ -77,18 +73,19 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        # Send get request to server
+        # parse the url
         parsed_url = urlparse(url)
-        # print("URL PARSED: ", parsed_url)
-        # print("PORT: ", parsed_url.port)
-        # Add path to root if no path given
+
+        # set path to root if no path given
         if parsed_url.path == "":
             path = "/"
         else:
             path = parsed_url.path
-        http_get = "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n".format(path, parsed_url.hostname)
-        #print(http_get)
 
+        # create http GET request
+        http_get = "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n".format(path, parsed_url.hostname)
+
+        # connect to server and send http request
         if not parsed_url.port:
             # default to port 80
             self.connect(parsed_url.hostname, 80)
@@ -97,13 +94,9 @@ class HTTPClient(object):
         self.sendall(http_get)
 
         # handle reply
-        recieved_data = self.recvall(self.socket)
-        # print("RECIEVED: \n", recieved)
-        code = self.get_code(recieved_data)
-        # print("GOT CODE: ", code)
-        headers = self.get_headers(recieved_data)
-        body = self.get_body(recieved_data)
-        # print("GOT BODY: ", body)
+        received_data = self.recvall(self.socket)
+        code = self.get_code(received_data)
+        body = self.get_body(received_data)
 
         # socket shutdown
         self.socket.shutdown(socket.SHUT_WR)
@@ -111,43 +104,42 @@ class HTTPClient(object):
         return HTTPResponse(int(code), body)
 
     def POST(self, url, args=None):
-        # Send post request to server
+        # parse the url
         parsed_url = urlparse(url)
-        # print("URL PARSED: ", parsed_url)
-        # print("PORT: ", parsed_url.port)
-        # Add path to root if no path given
+
+        # set path to root if no path given
         if parsed_url.path == "":
             path = "/"
         else:
             path = parsed_url.path
+
+        # fill up content if there is some
         content = ""
         if args:
             for key, val in args.items():
                 content += key + "=" + val + "&"
             content = content[:-1] # remove last &
-        # print("CONTENT: ", content)
+        
+        # create http post request
         if content == "":
             http_post = "POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".format(path, parsed_url.hostname)
         else:
             http_post = "POST {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\n\r\n{}\r\n\r\n".format(path, parsed_url.hostname, len(content), content)
 
-        # print("MY POST: ", http_post)
-
+        # open connection to url
         if not parsed_url.port:
             # default to port 80
             self.connect(parsed_url.hostname, 80)
         else:
             self.connect(parsed_url.hostname, parsed_url.port)
+
+        # send http request to server
         self.sendall(http_post)
 
-        # handle reply
-        recieved_data = self.recvall(self.socket)
-        # print("RECIEVED: \n", recieved)
-        code = self.get_code(recieved_data)
-        # print("GOT CODE: ", code)
-        headers = self.get_headers(recieved_data)
-        body = self.get_body(recieved_data)
-        # print("GOT BODY: ", body)
+        # receive and handle reply
+        received_data = self.recvall(self.socket)
+        code = self.get_code(received_data)
+        body = self.get_body(received_data)
 
         # socket shutdown
         self.socket.shutdown(socket.SHUT_WR)
